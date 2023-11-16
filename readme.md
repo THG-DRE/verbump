@@ -21,7 +21,7 @@ bump the version of application2 independently of application1.
 ./verbump bump \
     --repository "/path/to/repo" \
     --current-version "0.4.8" \
-    --include "pkg,cmd/application1"
+    --include "pkg,cmd/application2"
 ```
 
 bump the version of anything that uses `pkg` if there were any changes.
