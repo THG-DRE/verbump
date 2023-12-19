@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -104,17 +105,36 @@ func getLastTag(repository string) (string, error) {
 }
 
 func getCommitMessagesSince(tag string, repository string, subfolders ...string) ([]string, error) {
+	app := "git"
 	args := []string{"-C", repository, "log", "--pretty=format:%s", tag + "..HEAD", "--"}
 	args = append(args, subfolders...)
 
-	cmd := exec.Command("git", args...)
+	command := exec.Command(app, args...)
 
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, err
+	var stdout, stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	// we dont want check the error immediately, sometimes there is useful info
+	// in stdout and stderr so try print them first
+	err := command.Run()
+
+	// maybe here we check if stdout matches a version, if not then print and return
+	if stdout.String() != "" {
+		fmt.Printf("------------------------------ %s - stdout ------------------------------\n", app)
+		fmt.Println(stdout.String())
+		fmt.Printf("------------------------------ %s - stdout ------------------------------\n", app)
 	}
 
-	return strings.Split(strings.TrimSpace(string(output)), "\n"), nil
+	if stderr.String() != "" {
+		fmt.Printf("------------------------------ %s - stderr ------------------------------\n", app)
+		fmt.Println(stderr.String())
+		fmt.Printf("------------------------------ %s - stderr ------------------------------\n", app)
+
+		return []string{""}, err
+	}
+
+	return strings.Split(strings.TrimSpace(stdout.String()), "\n"), nil
 }
 
 func determineVersionChangeType(commitMessages []string) commitType {
