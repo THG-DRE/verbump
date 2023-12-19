@@ -40,7 +40,7 @@ jobs:
           git push
 
       - name: set time
-        run: echo "TIME=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
+        run: echo "VERSION=$(cat version)" >> $GITHUB_ENV
 
       - name: Create Release
         id: create_release
@@ -48,14 +48,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.TIME }}
-          release_name: Release ${{ env.TIME }}
+          tag_name: ${{ env.VERSION }}
+          release_name: Release ${{ env.VERSION }}
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bin/*/*.tar.gz
-          tag: ${{ env.TIME }}
+          tag: ${{ env.VERSION }}
           overwrite: true
           file_glob: true
