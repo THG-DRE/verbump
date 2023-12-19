@@ -55,6 +55,8 @@ const (
 
 const writeMode0644 fs.FileMode = 644
 
+const git string = "git"
+
 func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 	// get cli values
 	versionFile, _ := cmd.Flags().GetString("version-file")
@@ -94,18 +96,39 @@ func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 }
 
 func getLastTag(repository string) (string, error) {
-	cmd := exec.Command("git", "-C", repository, "describe", "--abbrev=0", "--tags")
+	app := git
+	args := []string{"-C", repository, "describe", "--abbrev=0", "--tags"}
 
-	output, err := cmd.Output()
-	if err != nil {
+	command := exec.Command(app, args...)
+
+	var stdout, stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	// we dont want check the error immediately, sometimes there is useful info
+	// in stdout and stderr so try print them first
+	err := command.Run()
+
+	// maybe here we check if stdout matches a tag, if not then print and return
+	if stdout.String() != "" {
+		fmt.Printf("------------------------------ %s - stdout ------------------------------\n", app)
+		fmt.Println(stdout.String())
+		fmt.Printf("------------------------------ %s - stdout ------------------------------\n", app)
+	}
+
+	if stderr.String() != "" {
+		fmt.Printf("------------------------------ %s - stderr ------------------------------\n", app)
+		fmt.Println(stderr.String())
+		fmt.Printf("------------------------------ %s - stderr ------------------------------\n", app)
+
 		return "", err
 	}
 
-	return strings.TrimSpace(string(output)), nil
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 func getCommitMessagesSince(tag string, repository string, subfolders ...string) ([]string, error) {
-	app := "git"
+	app := git
 	args := []string{"-C", repository, "log", "--pretty=format:%s", tag + "..HEAD", "--"}
 	args = append(args, subfolders...)
 
