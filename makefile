@@ -1,20 +1,23 @@
-CLI_ARCHITECTURES=arm64 amd64
-CLI_PLATFORMS=darwin windows linux
-CLI_VERSION=0.0.2
+ARCHITECTURES=arm64 amd64
+PLATFORMS=darwin windows linux
+VERSION=`cat version`
 
 default: build
 
+bump-and-build: clean
+	hack/bump-and-build.sh
+
 .PHONY: build
 build:
-	$(foreach GOOS, $(CLI_PLATFORMS), \
-		$(foreach GOARCH, $(CLI_ARCHITECTURES), \
+	$(foreach GOOS, $(PLATFORMS), \
+		$(foreach GOARCH, $(ARCHITECTURES), \
 			$(shell \
 				export GOOS=$(GOOS); \
 				export GOARCH=$(GOARCH); \
-				go build -v -o ./bin/verbump-$(GOOS)-$(GOARCH)-$(CLI_VERSION)/verbump \
-					-ldflags "-X verbump/cmd.Version=$(CLI_VERSION)" \
+				go build -v -o ./bin/verbump-$(GOOS)-$(GOARCH)-$(VERSION)/verbump \
+					-ldflags "-X verbump/cmd.Version=$(VERSION)" \
 					.; \
-				tar -czf ./bin/verbump-$(GOOS)-$(GOARCH)-$(CLI_VERSION)/verbump-$(GOOS)-$(GOARCH)-$(CLI_VERSION).tar.gz -C ./bin/verbump-$(GOOS)-$(GOARCH)-$(CLI_VERSION) verbump; \
+				tar -czf ./bin/verbump-$(GOOS)-$(GOARCH)-$(VERSION)/verbump-$(GOOS)-$(GOARCH)-$(VERSION).tar.gz -C ./bin/verbump-$(GOOS)-$(GOARCH)-$(VERSION) verbump; \
 			)\
 		)\
 	)

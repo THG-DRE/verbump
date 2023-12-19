@@ -1,0 +1,61 @@
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    env:
+      TOKEN: ${{ secrets.ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "^1.21"
+
+      - name: clean go cache
+        run: go clean -modcache
+
+      - name: configure git
+        run: |
+          git config --global url.https://$TOKEN@github.com/.insteadOf https://github.com/
+          git config --global user.email "Tristan.Otterpohl@outlook.com"
+          git config --global user.name "Tristan Otterpohl"
+
+      - name: go mod tidy
+        run: go mod tidy
+
+      - name: bump version and build
+        run: make bump-and-build
+
+      - name: update repo
+        run: |
+          git add .
+          git diff --quiet && git diff --staged --quiet || git commit -m 'bump version'
+          git push
+
+      - name: set time
+        run: echo "TIME=$(date +'%Y.%m.%d.%H%M%S')" >> $GITHUB_ENV
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.TIME }}
+          release_name: Release ${{ env.TIME }}
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: bin/*/*.tar.gz
+          tag: ${{ env.TIME }}
+          overwrite: true
+          file_glob: true
