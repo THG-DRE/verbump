@@ -1,6 +1,6 @@
 CLI_ARCHITECTURES=arm64 amd64
 CLI_PLATFORMS=darwin windows linux
-CLI_VERSION=0.0.1
+CLI_VERSION=0.0.2
 
 default: build
 

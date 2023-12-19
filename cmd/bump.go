@@ -3,7 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
+	"os"
 	"os/exec"
 	"regexp"
 	"slices"
@@ -17,16 +19,16 @@ func init() {
 	RootCmd.AddCommand(bumpVersionCmd)
 
 	bumpVersionCmd.Flags().StringP("repository", "r", ".", "path to the repository")
-	bumpVersionCmd.Flags().StringSliceP("include", "i", []string{"."}, "the subfolders which you want the commits analysed in")         //nolint:lll
-	bumpVersionCmd.Flags().StringP("current-version", "c", "", "the current version of the application we want to bump the version on") //nolint:lll
+	bumpVersionCmd.Flags().StringSliceP("include", "i", []string{"."}, "the subfolders in which you want the commits analysed") //nolint:lll
+	bumpVersionCmd.Flags().StringP("version-file", "c", "", "the file which contains the version to be bumped")
 
 	bumpVersionCmd.MarkFlagRequired("repository")
-	bumpVersionCmd.MarkFlagRequired("current-version")
+	bumpVersionCmd.MarkFlagRequired("version-file")
 }
 
 var bumpVersionCmd = &cobra.Command{
 	Use:   "bump",
-	Short: "Bumps the version of the application",
+	Short: "Bumps the version in the file",
 	Run:   bumpVersionCmdRunE,
 }
 
@@ -50,11 +52,20 @@ const (
 	featBreaking commitPrefix = "feat!:"
 )
 
+const writeMode0644 fs.FileMode = 644
+
 func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 	// get cli values
-	currentVersion, _ := cmd.Flags().GetString("current-version")
+	versionFile, _ := cmd.Flags().GetString("version-file")
 	repository, _ := cmd.Flags().GetString("repository")
 	include, _ := cmd.Flags().GetStringSlice("include")
+
+	currentVersionBytes, err := os.ReadFile(versionFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	currentVersion := string(currentVersionBytes)
 
 	// Get the last tag, we will use the commits since this tag to determine
 	// what kind of version increment we will do
@@ -78,7 +89,7 @@ func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(newVersion)
+	os.WriteFile(versionFile, []byte(newVersion), writeMode0644)
 }
 
 func getLastTag(repository string) (string, error) {
