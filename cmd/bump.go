@@ -47,11 +47,10 @@ const numVersionParts int = 3
 type commitType string
 
 const (
-	patch      commitType = "fix"
-	minor      commitType = "feature"
-	major      commitType = "breaking"
-	preRelease commitType = "pre-release"
-	none       commitType = "none"
+	patch commitType = "fix"
+	minor commitType = "feature"
+	major commitType = "breaking"
+	none  commitType = "none"
 )
 
 type commitPrefix string
@@ -79,7 +78,7 @@ func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	currentVersion := string(currentVersionBytes)
+	currentVersion := strings.Trim(string(currentVersionBytes), "\n")
 
 	// Get the last tag, we will use the commits since this tag to determine
 	// what kind of version increment we will do
@@ -219,9 +218,21 @@ func determineVersionChangeType(commitMessages []string) commitType {
 }
 
 func incrementSemanticVersion(currentVersion string, versionChange commitType, preReleaseLabel string) (string, error) {
-	parts := strings.Split(currentVersion, ".")
+	parts := splitAny(currentVersion, ".-")
 	if len(parts) < numVersionParts {
 		return "", errors.New("invalid version format")
+	}
+
+	var currentPreReleaseLabel string
+	var preRelease string
+
+	preReleaseLabelPresent := len(parts) >= 4
+	if preReleaseLabelPresent {
+		// if this version already contains a preReleaseLabel then
+		// dont increment anything other than the preReleaseLabel
+		versionChange = none
+		currentPreReleaseLabel = parts[3]
+		preRelease = parts[4]
 	}
 
 	// Convert each part to an integer
@@ -240,27 +251,8 @@ func incrementSemanticVersion(currentVersion string, versionChange commitType, p
 		return "", err
 	}
 
-	var preReleaseInt int
-
-	// if there is any sort of pre-release label applied then always increment that
-	if preReleaseLabel != "" {
-		versionChange = preRelease
-
-		// if the version already contains the label then increment it
-		if len(parts) == 4 {
-			preReleaseInt, err = strconv.Atoi(strings.Split(parts[3], ".")[1])
-			if err != nil {
-				return "", err
-			}
-		} else {
-			preReleaseInt = 0
-		}
-	}
-
 	// Increment the corresponding part based on the version change
 	switch versionChange {
-	case preRelease:
-		preReleaseInt++
 	case major:
 		majorInt++
 
@@ -280,7 +272,22 @@ func incrementSemanticVersion(currentVersion string, versionChange commitType, p
 
 	// Format the new version string
 	newVersion := fmt.Sprintf("%d.%d.%d", majorInt, minorInt, patchInt)
+
+	// if there is any sort of pre-release label applied then increment it if
+	// it was already present or add it
 	if preReleaseLabel != "" {
+		var preReleaseInt int
+
+		// if the version already contains the label then increment it
+		if preReleaseLabelPresent && currentPreReleaseLabel == preReleaseLabel {
+			preReleaseInt, err = strconv.Atoi(preRelease)
+			if err != nil {
+				return "", err
+			}
+
+			preReleaseInt++
+		}
+
 		newVersion = fmt.Sprintf("%s-%s.%d", newVersion, preReleaseLabel, preReleaseInt)
 	}
 
@@ -294,4 +301,11 @@ func isRegexMatch(input, pattern string) bool {
 	}
 
 	return match
+}
+
+func splitAny(s string, seps string) []string {
+	splitter := func(r rune) bool {
+		return strings.ContainsRune(seps, r)
+	}
+	return strings.FieldsFunc(s, splitter)
 }
