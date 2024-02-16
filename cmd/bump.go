@@ -26,14 +26,6 @@ func init() {
 
 	bumpVersionCmd.MarkFlagRequired("repository")
 	bumpVersionCmd.MarkFlagRequired("version-file")
-
-	// TODO: i want to be able to bump a beta build
-	// bump --pre-release=beta
-	// 0.5.0 -> 0.5.1-beta.0
-	// bump --pre-release=beta
-	// 0.5.1-beta.0 -> 0.5.1-beta.1
-	// bump
-	// 0.5.1-beta.1 -> 0.5.1
 }
 
 var bumpVersionCmd = &cobra.Command{

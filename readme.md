@@ -8,26 +8,36 @@ It is built to work with repositories that contain multiple applications that mi
 
 ## Usage
 
-bump the version of `application1`.
+### version multiple applications in the same repository
+
+bump the version of `app1` taking into account any commits to shared components in `pkg`.
 ```
-./verbump bump \
-    --repository "/path/to/repo" \
-    --version-file "/path/to/repo/cmd/application1/version" \
-    --include "pkg,cmd/application1"
+./verbump bump  --repository "." --include "pkg,cmd/app1" --version-file "cmd/app1/version"
 ```
 
-bump the version of application2 independently of application1.
+commit `fix: ...` to `cmd/app1` results in version `0.0.1` being bumped to `0.0.2`
+
+bump the version of `app2` taking into account any commits to shared components in `pkg`.
 ```
-./verbump bump \
-    --repository "/path/to/repo" \
-    --version-file "/path/to/repo/cmd/application2/version" \
-    --include "pkg,cmd/application2"
+./verbump bump --repository "." --include "pkg,cmd/app2" --version-file "cmd/app2/version"
 ```
 
-bump the version of anything that uses `pkg` if there were any changes.
+commit `feat: ...` to `pkg` results in version `0.0.2` being bumped to `0.1.0`
+
+---
+
+### version an application with a pre release flag
+
+bump the version of `app1` and add a pre release label of `alpha`
+
 ```
-./verbump bump \
-    --repository "/path/to/repo" \
-    --version-file "/path/to/repo/cmd/application2/version" \
-    --include "pkg"
+./verbump bump --repository "." --include "pkg,cmd/app2" --version-file "cmd/app2/version" --pre-release "alpha"
 ```
+
+commit `fix!: ...` to `pkg` results in version `0.1.0` being bumped to `1.0.0-alpha.0`
+
+running the same command again will bump the version from `1.0.0-alpha.0` to `1.0.0-alpha.1`
+
+running the same command with a new pre release label of `rc` will bump the version from `1.0.0-alpha.1` to `1.0.0-rc.0`
+
+running the same command without pre release label will bump the version from `1.0.0-rc.0` to `1.0.0`
