@@ -21,7 +21,7 @@ func init() {
 
 	bumpVersionCmd.Flags().StringP("repository", "r", ".", "path to the repository")
 	bumpVersionCmd.Flags().StringSliceP("include", "i", []string{"."}, "the subfolders in which you want the commits analysed") //nolint:lll
-	bumpVersionCmd.Flags().StringP("version-file", "c", "", "the file which contains the version to be bumped")
+	bumpVersionCmd.Flags().StringP("version-file", "v", "", "the file which contains the version to be bumped")
 	bumpVersionCmd.Flags().StringP("pre-release", "p", "", "the pre release label we want appended to the version")
 
 	bumpVersionCmd.MarkFlagRequired("repository")
