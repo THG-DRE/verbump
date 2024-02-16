@@ -21,7 +21,8 @@ func init() {
 
 	bumpVersionCmd.Flags().StringP("repository", "r", ".", "path to the repository")
 	bumpVersionCmd.Flags().StringSliceP("include", "i", []string{"."}, "the subfolders in which you want the commits analysed") //nolint:lll
-	bumpVersionCmd.Flags().StringP("version-file", "c", "", "the file which contains the version to be bumped")
+	bumpVersionCmd.Flags().StringP("version-file", "v", "", "the file which contains the version to be bumped")
+	bumpVersionCmd.Flags().StringP("pre-release", "p", "", "the pre release label we want appended to the version")
 
 	bumpVersionCmd.MarkFlagRequired("repository")
 	bumpVersionCmd.MarkFlagRequired("version-file")
@@ -62,13 +63,14 @@ func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 	versionFile, _ := cmd.Flags().GetString("version-file")
 	repository, _ := cmd.Flags().GetString("repository")
 	include, _ := cmd.Flags().GetStringSlice("include")
+	preReleaseLabel, _ := cmd.Flags().GetString("pre-release")
 
 	currentVersionBytes, err := os.ReadFile(versionFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	currentVersion := string(currentVersionBytes)
+	currentVersion := strings.Trim(string(currentVersionBytes), "\n")
 
 	// Get the last tag, we will use the commits since this tag to determine
 	// what kind of version increment we will do
@@ -87,10 +89,13 @@ func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 	versionChange := determineVersionChangeType(commitMessages)
 
 	// Increment the semantic version
-	newVersion, err := incrementSemanticVersion(currentVersion, versionChange)
+	newVersion, err := incrementSemanticVersion(currentVersion, versionChange, preReleaseLabel)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Print(currentVersion)
+	log.Print(newVersion)
 
 	os.WriteFile(versionFile, []byte(newVersion), writeMode0644)
 }
@@ -204,10 +209,22 @@ func determineVersionChangeType(commitMessages []string) commitType {
 	return none
 }
 
-func incrementSemanticVersion(currentVersion string, versionChange commitType) (string, error) {
-	parts := strings.Split(currentVersion, ".")
-	if len(parts) != numVersionParts {
+func incrementSemanticVersion(currentVersion string, versionChange commitType, preReleaseLabel string) (string, error) {
+	parts := splitAny(currentVersion, ".-")
+	if len(parts) < numVersionParts {
 		return "", errors.New("invalid version format")
+	}
+
+	var currentPreReleaseLabel string
+	var preRelease string
+
+	preReleaseLabelPresent := len(parts) >= 4
+	if preReleaseLabelPresent {
+		// if this version already contains a preReleaseLabel then
+		// dont increment anything other than the preReleaseLabel
+		versionChange = none
+		currentPreReleaseLabel = parts[3]
+		preRelease = parts[4]
 	}
 
 	// Convert each part to an integer
@@ -248,6 +265,24 @@ func incrementSemanticVersion(currentVersion string, versionChange commitType) (
 	// Format the new version string
 	newVersion := fmt.Sprintf("%d.%d.%d", majorInt, minorInt, patchInt)
 
+	// if there is any sort of pre-release label applied then increment it if
+	// it was already present or add it
+	if preReleaseLabel != "" {
+		var preReleaseInt int
+
+		// if the version already contains the label then increment it
+		if preReleaseLabelPresent && currentPreReleaseLabel == preReleaseLabel {
+			preReleaseInt, err = strconv.Atoi(preRelease)
+			if err != nil {
+				return "", err
+			}
+
+			preReleaseInt++
+		}
+
+		newVersion = fmt.Sprintf("%s-%s.%d", newVersion, preReleaseLabel, preReleaseInt)
+	}
+
 	return newVersion, nil
 }
 
@@ -258,4 +293,11 @@ func isRegexMatch(input, pattern string) bool {
 	}
 
 	return match
+}
+
+func splitAny(s string, seps string) []string {
+	splitter := func(r rune) bool {
+		return strings.ContainsRune(seps, r)
+	}
+	return strings.FieldsFunc(s, splitter)
 }

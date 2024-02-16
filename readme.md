@@ -8,26 +8,44 @@ It is built to work with repositories that contain multiple applications that mi
 
 ## Usage
 
-bump the version of `application1`.
+### version multiple applications in the same repository
+
+Bump the version of `app1` taking into account any commits to shared components in `pkg`.
 ```
-./verbump bump \
-    --repository "/path/to/repo" \
-    --version-file "/path/to/repo/cmd/application1/version" \
-    --include "pkg,cmd/application1"
+./verbump bump --include "pkg,cmd/app1" --version-file "cmd/app1/version"
 ```
 
-bump the version of application2 independently of application1.
+Commit `fix: ...` to `cmd/app1`: `0.0.1` -> `0.0.2`
+
+Bump the version of `app2` taking into account any commits to shared components in `pkg`.
 ```
-./verbump bump \
-    --repository "/path/to/repo" \
-    --version-file "/path/to/repo/cmd/application2/version" \
-    --include "pkg,cmd/application2"
+./verbump bump --include "pkg,cmd/app2" --version-file "cmd/app2/version"
 ```
 
-bump the version of anything that uses `pkg` if there were any changes.
+Commit `feat: ...` to `pkg`: `0.0.2` -> `0.1.0`
+
+---
+
+### version an application with a pre release flag
+
+Bump the version of `app1` and add a pre release label of `alpha`
+
 ```
-./verbump bump \
-    --repository "/path/to/repo" \
-    --version-file "/path/to/repo/cmd/application2/version" \
-    --include "pkg"
+./verbump bump -i "pkg,cmd/app2" -v "cmd/app2/version" --pre-release "alpha"
+```
+
+commit `fix!: ...` to `pkg`: `0.1.0` -> `1.0.0-alpha.0`
+
+Running the same command again: `1.0.0-alpha.0` -> `1.0.0-alpha.1`
+
+Change the pre release label to `rc`: `1.0.0-alpha.1` -> `1.0.0-rc.0`
+
+```
+./verbump bump -i "pkg,cmd/app2" -v "cmd/app2/version" -p "alpha"
+```
+
+running the same command: `1.0.0-rc.0` -> `1.0.0`
+
+```
+./verbump bump -i "pkg,cmd/app2" -v "cmd/app2/version"
 ```
