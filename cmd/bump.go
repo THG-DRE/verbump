@@ -22,9 +22,18 @@ func init() {
 	bumpVersionCmd.Flags().StringP("repository", "r", ".", "path to the repository")
 	bumpVersionCmd.Flags().StringSliceP("include", "i", []string{"."}, "the subfolders in which you want the commits analysed") //nolint:lll
 	bumpVersionCmd.Flags().StringP("version-file", "c", "", "the file which contains the version to be bumped")
+	bumpVersionCmd.Flags().StringP("pre-release", "p", "", "the pre release label we want appended to the version")
 
 	bumpVersionCmd.MarkFlagRequired("repository")
 	bumpVersionCmd.MarkFlagRequired("version-file")
+
+	// TODO: i want to be able to bump a beta build
+	// bump --pre-release=beta
+	// 0.5.0 -> 0.5.1-beta.0
+	// bump --pre-release=beta
+	// 0.5.1-beta.0 -> 0.5.1-beta.1
+	// bump
+	// 0.5.1-beta.1 -> 0.5.1
 }
 
 var bumpVersionCmd = &cobra.Command{
@@ -38,10 +47,11 @@ const numVersionParts int = 3
 type commitType string
 
 const (
-	patch commitType = "fix"
-	minor commitType = "feature"
-	major commitType = "breaking"
-	none  commitType = "none"
+	patch      commitType = "fix"
+	minor      commitType = "feature"
+	major      commitType = "breaking"
+	preRelease commitType = "pre-release"
+	none       commitType = "none"
 )
 
 type commitPrefix string
@@ -62,6 +72,7 @@ func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 	versionFile, _ := cmd.Flags().GetString("version-file")
 	repository, _ := cmd.Flags().GetString("repository")
 	include, _ := cmd.Flags().GetStringSlice("include")
+	preReleaseLabel, _ := cmd.Flags().GetString("pre-release")
 
 	currentVersionBytes, err := os.ReadFile(versionFile)
 	if err != nil {
@@ -87,10 +98,13 @@ func bumpVersionCmdRunE(cmd *cobra.Command, args []string) {
 	versionChange := determineVersionChangeType(commitMessages)
 
 	// Increment the semantic version
-	newVersion, err := incrementSemanticVersion(currentVersion, versionChange)
+	newVersion, err := incrementSemanticVersion(currentVersion, versionChange, preReleaseLabel)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Print(currentVersion)
+	log.Print(newVersion)
 
 	os.WriteFile(versionFile, []byte(newVersion), writeMode0644)
 }
@@ -204,9 +218,9 @@ func determineVersionChangeType(commitMessages []string) commitType {
 	return none
 }
 
-func incrementSemanticVersion(currentVersion string, versionChange commitType) (string, error) {
+func incrementSemanticVersion(currentVersion string, versionChange commitType, preReleaseLabel string) (string, error) {
 	parts := strings.Split(currentVersion, ".")
-	if len(parts) != numVersionParts {
+	if len(parts) < numVersionParts {
 		return "", errors.New("invalid version format")
 	}
 
@@ -226,8 +240,27 @@ func incrementSemanticVersion(currentVersion string, versionChange commitType) (
 		return "", err
 	}
 
+	var preReleaseInt int
+
+	// if there is any sort of pre-release label applied then always increment that
+	if preReleaseLabel != "" {
+		versionChange = preRelease
+
+		// if the version already contains the label then increment it
+		if len(parts) == 4 {
+			preReleaseInt, err = strconv.Atoi(strings.Split(parts[3], ".")[1])
+			if err != nil {
+				return "", err
+			}
+		} else {
+			preReleaseInt = 0
+		}
+	}
+
 	// Increment the corresponding part based on the version change
 	switch versionChange {
+	case preRelease:
+		preReleaseInt++
 	case major:
 		majorInt++
 
@@ -247,6 +280,9 @@ func incrementSemanticVersion(currentVersion string, versionChange commitType) (
 
 	// Format the new version string
 	newVersion := fmt.Sprintf("%d.%d.%d", majorInt, minorInt, patchInt)
+	if preReleaseLabel != "" {
+		newVersion = fmt.Sprintf("%s-%s.%d", newVersion, preReleaseLabel, preReleaseInt)
+	}
 
 	return newVersion, nil
 }
