@@ -11,7 +11,7 @@ if ! test -f verbump; then
         ARCH=amd64
     fi
 
-    wget https://github.com/THG-DRE/verbump/releases/download/v$VERBUMP_VERSION/verbump-$OS-$ARCH-$VERBUMP_VERSION.tar.gz
+    wget https://github.com/THG-DRE/verbump/releases/download/$VERBUMP_VERSION/verbump-$OS-$ARCH-$VERBUMP_VERSION.tar.gz
     tar -xvf verbump-$OS-$ARCH-$VERBUMP_VERSION.tar.gz
     rm verbump-$OS-$ARCH-$VERBUMP_VERSION.tar.gz
 fi
