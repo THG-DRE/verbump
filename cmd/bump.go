@@ -24,7 +24,6 @@ func init() {
 	bumpVersionCmd.Flags().StringP("version-file", "v", "", "the file which contains the version to be bumped")
 	bumpVersionCmd.Flags().StringP("pre-release", "p", "", "the pre release label we want appended to the version")
 
-	bumpVersionCmd.MarkFlagRequired("repository")
 	bumpVersionCmd.MarkFlagRequired("version-file")
 }
 
